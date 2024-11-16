@@ -1,0 +1,2 @@
+# BubblesScouting
+Scouting software
