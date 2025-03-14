@@ -32,14 +32,12 @@ saved_matches = load_data()
 selected_color = None
 current_match = None
 team_number = ""
-
 counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
             "Algae Removed": 0, "Algae Processed": 0, "Algae Netted": 0}
 moved_state = "No"
 action_history = []
 phase3_buttons = {}
 auto_counter_labels = {}
-
 teleop_counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
                    "Algae Removed": 0, "Algae Processed": 0, "Algae Netted": 0}
 teleop_history = []
@@ -47,10 +45,9 @@ climb_state = "No barge"
 teleop_broken_state = "No"
 teleop_buttons = {}
 teleop_counter_labels = {}
-
 robot_coords = None
 MAX_COMMENT_LENGTH = 100
-last_data_str = ""  # stores the JSON string used for the QR code
+last_data_str = ""
 
 def update_auto_comment_count(event=None):
     text = auto_comment_box.get("1.0", "end-1c")
@@ -69,24 +66,35 @@ def generate_qr_codes(data_str):
     img = qr.make_image(fill_color="black", back_color="white")
     return [ImageTk.PhotoImage(img)]
 
-def copy_data():
+# New helper function that retrieves saved data from the dictionary.
+def get_saved_data():
     global last_data_str
+    if current_match in saved_matches:
+        last_data_str = json.dumps(saved_matches[current_match])
+    else:
+        update_last_data_str()  # fallback: build from current UI values
+    return last_data_str
+
+def copy_data():
+    data_str = get_saved_data()
     root.clipboard_clear()
-    root.clipboard_append(last_data_str)
+    root.clipboard_append(data_str)
     messagebox.showinfo("Copied", "QR code data copied to clipboard.")
 
 def download_data():
-    global last_data_str, current_match, team_number
+    data_str = get_saved_data()
     folder = filedialog.askdirectory(title="Select download folder")
     if folder:
-        # File is named like teamnumber_matchnumber.json
         file_path = os.path.join(folder, f"{team_number}_{current_match}.json")
         with open(file_path, "w") as f:
-            f.write(last_data_str)
+            f.write(data_str)
         messagebox.showinfo("Downloaded", f"Match data saved to:\n{file_path}")
 
-def update_qr_code_in_container(container):
-    global last_data_str
+# This function now builds the JSON string from the current UI state.
+def update_last_data_str():
+    global team_number
+    # Even if team_number entry is disabled, get() works.
+    team_number = team_number_entry.get().strip()
     auto_comment = auto_comment_box.get("1.0", "end-1c")[:MAX_COMMENT_LENGTH]
     teleop_comment = teleop_comment_box.get("1.0", "end-1c")[:MAX_COMMENT_LENGTH]
     data = {
@@ -96,22 +104,27 @@ def update_qr_code_in_container(container):
         "auto": {"counters": counters, "moved_state": moved_state, "robot_coords": robot_coords, "comment": auto_comment},
         "teleop": {"counters": teleop_counters, "climb_state": climb_state, "teleop_broken_state": teleop_broken_state, "comment": teleop_comment}
     }
-    data_str = json.dumps(data)
-    last_data_str = data_str
-    global qr_codes, current_qr_index
-    qr_codes = generate_qr_codes(data_str)
+    global last_data_str
+    last_data_str = json.dumps(data)
+
+def update_qr_code_in_container(container):
+    update_last_data_str()
+    global qr_codes, current_qr_index, last_data_str
+    qr_codes = generate_qr_codes(last_data_str)
     current_qr_index = 0
     for widget in container.winfo_children():
         widget.destroy()
+    # Place buttons on top
+    btn_frame = customtkinter.CTkFrame(container)
+    btn_frame.pack(pady=5)
+    copy_btn = customtkinter.CTkButton(btn_frame, text="Copy Data", command=copy_data)
+    copy_btn.pack(side="left", padx=5)
+    download_btn = customtkinter.CTkButton(btn_frame, text="Download", command=download_data)
+    download_btn.pack(side="left", padx=5)
+    # Then pack the QR code below
     if qr_codes:
         qr_label = customtkinter.CTkLabel(container, image=qr_codes[current_qr_index], text="")
         qr_label.pack(pady=10)
-        btn_frame = customtkinter.CTkFrame(container)
-        btn_frame.pack(pady=5)
-        copy_btn = customtkinter.CTkButton(btn_frame, text="Copy Data", command=copy_data)
-        copy_btn.pack(side="left", padx=5)
-        download_btn = customtkinter.CTkButton(btn_frame, text="Download", command=download_data)
-        download_btn.pack(side="left", padx=5)
 
 def on_match_select(match):
     global current_match
@@ -138,8 +151,7 @@ def display_saved_data(match):
         red_button.configure(state="disabled")
         blue_button.configure(state="disabled")
     summary = (f"Saved Data:\nMatch: {match}\nTeam: {data.get('team_number','')}\n"
-               f"Alliance: {data.get('selected_color','')}\nAuto: {data.get('auto',{})}\n"
-               f"TeleOp: {data.get('teleop',{})}")
+               f"Alliance: {data.get('selected_color','')}\nAuto: {data.get('auto',{})}\nTeleOp: {data.get('teleop',{})}")
     saved_data_label.configure(text=summary)
     saved_data_label.pack(pady=5)
     edit_button.pack(pady=5)
@@ -248,13 +260,19 @@ def show_phase3():
 def teleop_increment(key):
     old = teleop_counters[key]
     teleop_counters[key] = old + 1
-    teleop_counter_labels[key].configure(text=f"{key}: {teleop_counters[key]}")
+    if key in teleop_counter_labels:
+        teleop_counter_labels[key].configure(text=f"{key}: {teleop_counters[key]}")
+    elif key in teleop_counter_labels_extra:
+        teleop_counter_labels_extra[key].configure(text=f"{key}: {teleop_counters[key]}")
     teleop_history.append(("counter", key, old))
 
 def teleop_decrement(key):
     old = teleop_counters[key]
     teleop_counters[key] = old - 1
-    teleop_counter_labels[key].configure(text=f"{key}: {teleop_counters[key]}")
+    if key in teleop_counter_labels:
+        teleop_counter_labels[key].configure(text=f"{key}: {teleop_counters[key]}")
+    elif key in teleop_counter_labels_extra:
+        teleop_counter_labels_extra[key].configure(text=f"{key}: {teleop_counters[key]}")
     teleop_history.append(("counter", key, old))
 
 def teleop_press_algae():
@@ -328,7 +346,7 @@ root.geometry("1200x720")
 root.title("Scouting App")
 root.configure(bg="light blue")
 
-# Create comment boxes after frames exist.
+# Create auto and teleop comment boxes after frames are defined.
 left_frame = customtkinter.CTkFrame(root, width=300, height=720)
 left_frame.pack(side="left", fill="y")
 match_scrollable = customtkinter.CTkScrollableFrame(left_frame, width=280, height=500)
