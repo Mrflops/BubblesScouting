@@ -5,10 +5,8 @@ import customtkinter
 from PIL import Image, ImageTk
 import qrcode
 
-# Set working directory to the script directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-# ---------------- Data Persistence ---------------- #
 DATA_FILE = "match_data.json"
 saved_matches = {}
 
@@ -30,18 +28,15 @@ def save_data():
 
 saved_matches = load_data()
 
-# ---------------- Global State ---------------- #
-selected_color = None    # "Red" or "Blue"
-current_match = None     # e.g., "Match 6"
-team_number = ""         # Entered in Phase 1
+selected_color = None
+current_match = None
+team_number = ""
 
-# Auto (Phase 3) state
 counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0, "Algae": 0}
-moved_state = "No"       # For auto (moved away from middle toggle)
-action_history = []      # For undo in auto
-phase3_buttons = {}      # References for auto buttons
+moved_state = "No"
+action_history = []
+phase3_buttons = {}
 
-# TeleOp (Phase 4) state
 teleop_counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
                    "Algae Processed": 0, "Algae Netted": 0, "Algae Removed": 0}
 teleop_history = []
@@ -49,10 +44,8 @@ climb_state = "None"
 teleop_broken_state = "No"
 teleop_buttons = {}
 
-# Robot starting position (Phase 2)
-robot_coords = None  # Will hold the canvas coords of the robot rectangle
+robot_coords = None
 
-# ---------------- QR Code Functions ---------------- #
 def generate_qr_codes(data_str):
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L)
     qr.add_data(data_str)
@@ -78,17 +71,14 @@ def update_qr_code_in_container(container):
         qr_label = customtkinter.CTkLabel(container, image=qr_codes[current_qr_index], text="")
         qr_label.pack(pady=10)
 
-# ---------------- UI Functions ---------------- #
 def on_match_select(match):
     global current_match
-    # Clear previous team input and saved data displays
+    current_match = match
     team_frame.pack_forget()
     saved_data_label.pack_forget()
     edit_button.pack_forget()
-    # Also, if there is a previous QR container, remove it.
     if 'qr_container' in globals():
         qr_container.destroy()
-    current_match = match
     if match in saved_matches:
         display_saved_data(match)
     else:
@@ -134,7 +124,6 @@ def select_team_color(color):
         blue_button.configure(fg_color="blue")
         red_button.configure(fg_color="gray")
 
-# ---------------- Phase 1: Team Input ---------------- #
 def start_match():
     global team_number
     team_number = team_number_entry.get().strip()
@@ -142,7 +131,6 @@ def start_match():
     left_frame.pack_forget()
     show_starting_position()
 
-# ---------------- Phase 2: Starting Position Picker ---------------- #
 def show_starting_position():
     start_position_frame.pack(fill="both", expand=True)
     draw_starting_canvas()
@@ -152,11 +140,9 @@ def draw_starting_canvas():
     position_canvas.delete("all")
     position_canvas.create_image(0, 0, anchor="nw", image=sp_image_tk)
     text_color = "red" if selected_color == "Red" else "blue"
-    position_canvas.create_text(5, 5, text=f"Team {team_number} - {selected_color}", fill=text_color,
-                                 font=("Arial", 16, "bold"), anchor="nw")
+    position_canvas.create_text(5, 5, text=f"Team {team_number} - {selected_color}", fill=text_color, font=("Arial", 16, "bold"), anchor="nw")
     rect_size = 40
-    robot_rect = position_canvas.create_rectangle(10, 10, 10+rect_size, 10+rect_size,
-                                                   fill="red", outline="black")
+    robot_rect = position_canvas.create_rectangle(10, 10, 10+rect_size, 10+rect_size, fill="red", outline="black")
     robot_coords = position_canvas.coords(robot_rect)
     drag_data = {"x": 0, "y": 0, "item": None}
     def on_button_press(event):
@@ -193,7 +179,6 @@ def draw_starting_canvas():
     position_canvas.bind("<ButtonRelease-1>", on_button_release)
     position_canvas.bind("<B1-Motion>", on_motion)
 
-# ---------------- Phase 3: Auto (Action Page) ---------------- #
 def press_l_button(btn_name):
     old_value = counters[btn_name]
     counters[btn_name] += 1
@@ -235,7 +220,6 @@ def show_phase3():
     start_position_frame.pack_forget()
     phase3_frame.pack(fill="both", expand=True)
 
-# ---------------- Phase 4: TeleOp (Integrated) ---------------- #
 def teleop_press_l(btn_name):
     global teleop_counters
     old = teleop_counters[btn_name]
@@ -307,8 +291,7 @@ def reset_to_match_selection():
     counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0, "Algae": 0}
     moved_state = "No"
     action_history = []
-    teleop_counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
-                       "Algae Processed": 0, "Algae Netted": 0, "Algae Removed": 0}
+    teleop_counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0, "Algae Processed": 0, "Algae Netted": 0, "Algae Removed": 0}
     teleop_history = []
     climb_state = "None"
     teleop_broken_state = "No"
@@ -319,13 +302,11 @@ def reset_to_match_selection():
     field_frame.pack(fill="both", expand=True)
     left_frame.pack(side="left", fill="y")
 
-# ---------------- Main Window Setup ---------------- #
 root = customtkinter.CTk()
 root.geometry("1200x720")
 root.title("Scouting App")
 root.configure(bg="light blue")
 
-# Left Frame: Event & Match Selection
 left_frame = customtkinter.CTkFrame(root, width=300, height=720)
 left_frame.pack(side="left", fill="y")
 event_options = ["Newmarket", "Durham College"]
@@ -336,23 +317,19 @@ match_scrollable = customtkinter.CTkScrollableFrame(left_frame, width=280, heigh
 match_scrollable.pack(pady=20, padx=10, fill="both", expand=True)
 num_matches = 58
 for match in [f"Match {i+1}" for i in range(num_matches)]:
-    match_button = customtkinter.CTkButton(match_scrollable, text=match,
-                                           command=lambda m=match: on_match_select(m))
+    match_button = customtkinter.CTkButton(match_scrollable, text=match, command=lambda m=match: on_match_select(m))
     match_button.pack(pady=5, padx=10)
 
 saved_data_label = customtkinter.CTkLabel(root, text="", font=("Arial", 14))
 edit_button = customtkinter.CTkButton(root, text="Edit", command=edit_match_data, width=150)
 
-# Right Frame: Contains only the phase container
 right_frame = customtkinter.CTkFrame(root, width=900, height=720)
 right_frame.pack(side="right", fill="both", expand=True)
 phase_container = customtkinter.CTkFrame(right_frame)
 phase_container.pack(fill="both", expand=True)
 
-# ---------- Phase 1: Team Input ----------
 field_frame = customtkinter.CTkFrame(phase_container)
 field_frame.pack(fill="both", expand=True)
-# (No full map image; only team input UI)
 team_frame = customtkinter.CTkFrame(field_frame)
 team_title_label = customtkinter.CTkLabel(team_frame, text="", font=("Arial", 16, "underline"))
 team_title_label.pack(pady=10)
@@ -370,9 +347,7 @@ blue_button = customtkinter.CTkButton(team_button_frame, text="Blue", command=la
 blue_button.pack(side="left", padx=20)
 start_button = customtkinter.CTkButton(team_frame, text="START", command=start_match, width=150)
 start_button.pack(pady=20)
-# team_frame is only packed when a match is selected
 
-# ---------- Phase 2: Starting Position Picker ----------
 start_position_frame = customtkinter.CTkFrame(phase_container)
 sp_img = Image.open("Data/startingPos.jpg")
 sp_image_tk = ImageTk.PhotoImage(sp_img)
@@ -386,14 +361,11 @@ start2_button.pack(pady=5)
 warning_label2 = customtkinter.CTkLabel(bottom_frame, text="Do not start until match starts", font=("Arial", 12))
 warning_label2.pack(pady=5)
 
-# ---------- Phase 3: Auto (Action Page) ----------
 phase3_frame = customtkinter.CTkFrame(phase_container)
 l_frame = customtkinter.CTkFrame(phase3_frame)
 l_frame.pack(pady=10)
-# Arrange L buttons horizontally (auto format)
 for btn_name in ["L1", "L2", "L3", "L4"]:
-    btn = customtkinter.CTkButton(l_frame, text=f"{btn_name}: 0", width=100,
-                                  command=lambda name=btn_name: press_l_button(name))
+    btn = customtkinter.CTkButton(l_frame, text=f"{btn_name}: 0", width=100, command=lambda name=btn_name: press_l_button(name))
     btn.pack(side="left", padx=5)
     phase3_buttons[btn_name] = btn
 algae_button = customtkinter.CTkButton(phase3_frame, text="Algae: 0", width=150, command=press_algae)
@@ -405,14 +377,11 @@ undo_button.pack(pady=10)
 teleop_button = customtkinter.CTkButton(phase3_frame, text="TeleOp Period", width=150, command=show_teleop)
 teleop_button.pack(pady=10)
 
-# ---------- Phase 4: TeleOp (Integrated) ----------
 teleop_frame = customtkinter.CTkFrame(phase_container)
-# Arrange L buttons horizontally (same as auto)
 teleop_l_frame = customtkinter.CTkFrame(teleop_frame)
 teleop_l_frame.pack(pady=10)
 for btn_name in ["L1", "L2", "L3", "L4"]:
-    btn = customtkinter.CTkButton(teleop_l_frame, text=f"{btn_name}: 0", width=100,
-                                  command=lambda name=btn_name: teleop_press_l(name))
+    btn = customtkinter.CTkButton(teleop_l_frame, text=f"{btn_name}: 0", width=100, command=lambda name=btn_name: teleop_press_l(name))
     btn.pack(side="left", padx=5)
     teleop_buttons[btn_name] = btn
 algae_teleop_btn = customtkinter.CTkButton(teleop_frame, text="Algae Processed: 0", width=150, command=teleop_press_algae)
@@ -423,7 +392,6 @@ broken_btn = customtkinter.CTkButton(teleop_frame, text="Broken: No", width=150,
 broken_btn.pack(pady=5)
 undo_teleop_btn = customtkinter.CTkButton(teleop_frame, text="Undo", width=150, command=teleop_undo)
 undo_teleop_btn.pack(pady=5)
-# End Match button saves data and resets the UI to match selection.
 end_match_btn = customtkinter.CTkButton(teleop_frame, text="End Match", width=150, command=end_match)
 end_match_btn.pack(pady=5)
 
