@@ -4,6 +4,8 @@ import tkinter
 import customtkinter
 from PIL import Image, ImageTk
 import qrcode
+import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILE = "match_data.json"
@@ -26,15 +28,18 @@ def save_data():
         json.dump(saved_matches, f, indent=4)
 
 saved_matches = load_data()
+
 selected_color = None
 current_match = None
 team_number = ""
+
 counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
             "Algae Removed": 0, "Algae Processed": 0, "Algae Netted": 0}
 moved_state = "No"
 action_history = []
 phase3_buttons = {}
 auto_counter_labels = {}
+
 teleop_counters = {"L1": 0, "L2": 0, "L3": 0, "L4": 0,
                    "Algae Removed": 0, "Algae Processed": 0, "Algae Netted": 0}
 teleop_history = []
@@ -42,8 +47,10 @@ climb_state = "No barge"
 teleop_broken_state = "No"
 teleop_buttons = {}
 teleop_counter_labels = {}
+
 robot_coords = None
 MAX_COMMENT_LENGTH = 100
+last_data_str = ""  # stores the JSON string used for the QR code
 
 def update_auto_comment_count(event=None):
     text = auto_comment_box.get("1.0", "end-1c")
@@ -62,7 +69,24 @@ def generate_qr_codes(data_str):
     img = qr.make_image(fill_color="black", back_color="white")
     return [ImageTk.PhotoImage(img)]
 
+def copy_data():
+    global last_data_str
+    root.clipboard_clear()
+    root.clipboard_append(last_data_str)
+    messagebox.showinfo("Copied", "QR code data copied to clipboard.")
+
+def download_data():
+    global last_data_str, current_match, team_number
+    folder = filedialog.askdirectory(title="Select download folder")
+    if folder:
+        # File is named like teamnumber_matchnumber.json
+        file_path = os.path.join(folder, f"{team_number}_{current_match}.json")
+        with open(file_path, "w") as f:
+            f.write(last_data_str)
+        messagebox.showinfo("Downloaded", f"Match data saved to:\n{file_path}")
+
 def update_qr_code_in_container(container):
+    global last_data_str
     auto_comment = auto_comment_box.get("1.0", "end-1c")[:MAX_COMMENT_LENGTH]
     teleop_comment = teleop_comment_box.get("1.0", "end-1c")[:MAX_COMMENT_LENGTH]
     data = {
@@ -73,6 +97,7 @@ def update_qr_code_in_container(container):
         "teleop": {"counters": teleop_counters, "climb_state": climb_state, "teleop_broken_state": teleop_broken_state, "comment": teleop_comment}
     }
     data_str = json.dumps(data)
+    last_data_str = data_str
     global qr_codes, current_qr_index
     qr_codes = generate_qr_codes(data_str)
     current_qr_index = 0
@@ -81,6 +106,12 @@ def update_qr_code_in_container(container):
     if qr_codes:
         qr_label = customtkinter.CTkLabel(container, image=qr_codes[current_qr_index], text="")
         qr_label.pack(pady=10)
+        btn_frame = customtkinter.CTkFrame(container)
+        btn_frame.pack(pady=5)
+        copy_btn = customtkinter.CTkButton(btn_frame, text="Copy Data", command=copy_data)
+        copy_btn.pack(side="left", padx=5)
+        download_btn = customtkinter.CTkButton(btn_frame, text="Download", command=download_data)
+        download_btn.pack(side="left", padx=5)
 
 def on_match_select(match):
     global current_match
@@ -107,7 +138,8 @@ def display_saved_data(match):
         red_button.configure(state="disabled")
         blue_button.configure(state="disabled")
     summary = (f"Saved Data:\nMatch: {match}\nTeam: {data.get('team_number','')}\n"
-               f"Alliance: {data.get('selected_color','')}\nAuto: {data.get('auto',{})}\nTeleOp: {data.get('teleop',{})}")
+               f"Alliance: {data.get('selected_color','')}\nAuto: {data.get('auto',{})}\n"
+               f"TeleOp: {data.get('teleop',{})}")
     saved_data_label.configure(text=summary)
     saved_data_label.pack(pady=5)
     edit_button.pack(pady=5)
@@ -296,7 +328,7 @@ root.geometry("1200x720")
 root.title("Scouting App")
 root.configure(bg="light blue")
 
-# Define auto and teleop comment boxes after phase frames are created.
+# Create comment boxes after frames exist.
 left_frame = customtkinter.CTkFrame(root, width=300, height=720)
 left_frame.pack(side="left", fill="y")
 match_scrollable = customtkinter.CTkScrollableFrame(left_frame, width=280, height=500)
