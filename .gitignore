@@ -2,3 +2,9 @@
 /shelf/
 /workspace.xml
 /.idea
+/build
+/dist
+/Output
+App.spec
+BubblesScoutingInstaller.iss
+match_data.json
